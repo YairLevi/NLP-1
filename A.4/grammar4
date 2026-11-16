@@ -1,0 +1,262 @@
+# b d
+################################################################################
+# grammar4 -- weighted CFG for Assignment 1, part A.4
+#
+# grammar2 (A.2) extended with two phenomena:
+#   (b) yes-no questions   "did Sally eat a sandwich ?"  "will Sally eat ... ?"
+#   (d) wh-questions       "who ate the sandwich ?"
+#                          "what did the president think that Sally ate ?"
+#                          "where did Sally eat the sandwich ?"
+#
+# File format:   <weight> <LHS> <RHS ...>   # comment
+#   Weights are relative among rules that share a LHS.
+#
+# Naming conventions:
+#   ALLCAPS      phrase-level nonterminal          (NP, VP, YNQ)
+#   Capitalized  preterminal / part of speech      (Noun, TransVerb)
+#   lowercase    terminal word                     (sandwich)
+#   X/NP         "slash category": an X with one NP missing inside it (a gap).
+#                The wh-word at the front of a question fills that gap.
+#
+# Design notes:
+#   - Verbs are split into one class per subcategorization frame (as in A.2).
+#   - Questions need the verb's BASE form after "did" / modals ("did Sally
+#     EAT"), so every verb frame exists twice: finite (VP) and base (BASEVP).
+#     A CFG has no features, so this duplication cannot be avoided.
+#   - Yes-no questions use subject-auxiliary inversion: the auxiliary
+#     ("did", a modal, or the copula "is") moves in front of the subject.
+#   - A wh-question is a yes-no question with one NP replaced by a gap
+#     (YNQ/NP), plus a wh-phrase in front. The gap is passed down through
+#     slash categories until a rule finally leaves the NP out.
+#   - Gaps are only passed into positions English allows. They never go into a
+#     subject, into one half of a coordination, or right after "that" in
+#     subject position ("*who did you think that ate ...", the that-trace effect).
+#   - Single function words (that, is, be, did, very, it, which) appear
+#     directly in rules; a class exists only for word sets with several
+#     members (Modal, WhPronoun, WhAdverb, ...).
+#   - "(A.2 n)" tags point to README sentences from part A.2; "(b)" / "(d)"
+#     tag the A.4 rules.
+################################################################################
+
+
+#------------------------------------------------------------------------------
+# Sentences
+#   Questions get high weights so that the generated sample shows them.
+#------------------------------------------------------------------------------
+
+2	ROOT	S .
+1	ROOT	S !
+1	ROOT	is it true that S ?
+3	ROOT	YNQ ?			# (b)
+4	ROOT	WHQ ?			# (d)
+
+1	S	NP VP
+
+
+#------------------------------------------------------------------------------
+# Noun phrases
+#   Det Noun is the only non-recursive NP with real content, so it gets the
+#   highest weight. This keeps the recursive rules (PP attachment and
+#   coordination) rare and the sentences short (A.1).
+#------------------------------------------------------------------------------
+
+6	NP	Det Noun		# "the president"
+1	NP	ProperNoun		# (A.2 1)  proper nouns take no determiner
+1	NP	it			# (A.2 5)  pronoun (expletive subject in (5))
+1	NP	NP PP			# (A.2 7)  "every proposal on the desk"
+0.5	NP	NP Conj NP		# (A.2 2)  "Sally and the president"
+
+1	PP	Prep NP
+
+
+#------------------------------------------------------------------------------
+# Adjectives
+#------------------------------------------------------------------------------
+
+3	Noun	Adj Noun		# adjective chains (weighted up in A.1)
+1	Adj	very Adj		# (A.2 6)  degree adverb stacks on an adjective
+
+
+#------------------------------------------------------------------------------
+# Predicates after the copula ("is" / "be")
+#   Kept as one category so that "is", "be" and the inverted "is" in
+#   questions all share it.
+#------------------------------------------------------------------------------
+
+1	PRED	Adj			# (A.2 8)  "lazy"
+1	PRED	NP			# (A.2 10) "a sandwich"
+1	PRED	PresParticiple NP	# (A.2 9)  progressive: "eating a sandwich"
+
+
+#------------------------------------------------------------------------------
+# Finite verb phrases (past tense, copula "is", or modal + base VP)
+#------------------------------------------------------------------------------
+
+2	VP	TransVerb NP		# (A.2 1)  "ate a sandwich"
+1	VP	IntransVerb		# (A.2 3)  "sighed"
+1	VP	IntransVerb PP		# (A.2 7)  "worked on every proposal"
+1	VP	SentCompVerb that S	# (A.2 4)  "thought that S"
+1	VP	PsychVerb NP that S	# (A.2 5)  "perplexed the president that S"
+1	VP	is PRED			# (A.2 8-10) copula
+1	VP	Modal BASEVP		# (b)      "will eat a sandwich"
+0.5	VP	Modal be PRED		# (b)      "will be lazy"
+
+1	TransVerb	TransVerb Conj TransVerb	# (A.2 2)  "wanted and ate"
+
+
+#------------------------------------------------------------------------------
+# Base-form verb phrases (bare infinitive), used after "did" and modals.
+#   Same frames as VP, without the copula. The copula's base form "be" is
+#   only allowed after modals ("will be lazy", but never "*did be lazy").
+#------------------------------------------------------------------------------
+
+2	BASEVP	BaseTransVerb NP		# (b) "eat a sandwich"
+1	BASEVP	BaseIntransVerb			# (b) "sigh"
+1	BASEVP	BaseIntransVerb PP		# (b) "work on the desk"
+1	BASEVP	BaseSentCompVerb that S		# (b) "think that S"
+1	BASEVP	BasePsychVerb NP that S		# (b) "perplex the president that S"
+
+1	BaseTransVerb	BaseTransVerb Conj BaseTransVerb	# (b) "want and eat"
+
+
+#------------------------------------------------------------------------------
+# (b) Yes-no questions: subject-auxiliary inversion
+#------------------------------------------------------------------------------
+
+2	YNQ	did NP BASEVP		# do-support:  "did Sally eat a sandwich"
+1	YNQ	Modal NP BASEVP		# modal:       "will Sally eat a sandwich"
+0.5	YNQ	Modal NP be PRED	# modal + be:  "will Sally be lazy"
+2	YNQ	is NP PRED		# copula:      "is Sally eating a sandwich"
+
+
+#------------------------------------------------------------------------------
+# (d) Wh-questions
+#------------------------------------------------------------------------------
+
+1	WHQ	WHNP VP			# subject question, no inversion: "who ate the sandwich"
+3	WHQ	WHNP YNQ/NP		# non-subject NP: "what did Sally eat _"
+1	WHQ	WhAdverb YNQ		# adjunct: "where did Sally eat the sandwich"
+
+2	WHNP	WhPronoun		# "who", "what"
+1	WHNP	which Noun		# "which fine president"
+
+
+#------------------------------------------------------------------------------
+# (d) Gap categories: X/NP is X with exactly one NP missing.
+#   Each rule passes the gap to exactly one child, or ends it by leaving the
+#   NP out ("_" in the comments marks where the gap is).
+#------------------------------------------------------------------------------
+
+# Inverted question with a gap (never in the subject position).
+2	YNQ/NP	did NP BASEVP/NP	# "did Sally eat _"
+1	YNQ/NP	Modal NP BASEVP/NP	# "will Sally eat _"
+1	YNQ/NP	is NP PRED/NP		# "is Sally eating _"
+1	YNQ/NP	is NP			# "is Sally _"         (the gap is the predicate NP)
+0.5	YNQ/NP	Modal NP be		# "will Sally be _"
+
+# Base VP with a gap.
+2	BASEVP/NP	BaseTransVerb			# "eat _"
+1	BASEVP/NP	BaseTransVerb NP/NP		# "eat the sandwich with _"
+1	BASEVP/NP	BaseIntransVerb PP/NP		# "work on _"
+1	BASEVP/NP	BaseSentCompVerb		# "think _"   (what = the whole clause)
+1	BASEVP/NP	BaseSentCompVerb that S/NP	# "think that Sally ate _"
+1	BASEVP/NP	BasePsychVerb that S		# "perplex _ that S"
+
+# Embedded clause with a gap. Only the object side may hold it: a subject gap
+# right after "that" is ungrammatical (that-trace effect).
+1	S/NP	NP VP/NP		# "(that) Sally ate _"
+
+# Finite VP with a gap (inside embedded clauses).
+2	VP/NP	TransVerb			# "ate _"
+1	VP/NP	TransVerb NP/NP			# "ate the sandwich with _"
+1	VP/NP	IntransVerb PP/NP		# "worked on _"
+1	VP/NP	SentCompVerb			# "thought _"
+1	VP/NP	SentCompVerb that S/NP		# "thought that Sally ate _"
+1	VP/NP	PsychVerb that S		# "perplexed _ that S"
+1	VP/NP	is PRED/NP			# "is eating _"
+0.5	VP/NP	is				# "is _"
+1	VP/NP	Modal BASEVP/NP			# "will eat _"
+
+# Copula predicate with a gap.
+1	PRED/NP	PresParticiple		# "eating _"
+1	PRED/NP	PresParticiple NP/NP	# "eating the sandwich with _"
+
+# NP / PP with a gap: only through a PP, never into a coordination.
+1	NP/NP	NP PP/NP		# "the sandwich with _"
+1	PP/NP	Prep			# "with _"   (preposition stranding)
+
+
+#------------------------------------------------------------------------------
+# Lexicon
+#------------------------------------------------------------------------------
+
+1	Det	the
+1	Det	a
+1	Det	every
+
+1	Noun	president
+1	Noun	sandwich
+1	Noun	pickle
+1	Noun	chief of staff
+1	Noun	floor
+1	Noun	desk
+1	Noun	proposal
+
+1	ProperNoun	Sally
+
+1	Adj	fine
+1	Adj	delicious
+1	Adj	perplexed
+1	Adj	pickled
+1	Adj	lazy
+
+1	Prep	with
+1	Prep	on
+1	Prep	under
+1	Prep	in
+
+1	Conj	and
+
+# Finite (past tense) verbs.
+1	TransVerb	ate
+1	TransVerb	wanted
+1	TransVerb	kissed
+1	TransVerb	understood
+1	TransVerb	pickled
+
+1	IntransVerb	sighed
+1	IntransVerb	worked
+
+1	SentCompVerb	thought
+
+1	PsychVerb	perplexed
+
+1	PresParticiple	eating		# present participle of a transitive verb
+
+# (b) Base-form verbs, one per finite verb above.
+1	BaseTransVerb	eat
+1	BaseTransVerb	want
+1	BaseTransVerb	kiss
+1	BaseTransVerb	understand
+1	BaseTransVerb	pickle
+
+1	BaseIntransVerb	sigh
+1	BaseIntransVerb	work
+
+1	BaseSentCompVerb	think
+
+1	BasePsychVerb	perplex
+
+# (b) Modal auxiliaries: take a base-form VP.
+1	Modal	will
+1	Modal	would
+1	Modal	can
+1	Modal	should
+
+# (d) Wh-words.
+1	WhPronoun	who
+1	WhPronoun	what
+
+1	WhAdverb	where
+1	WhAdverb	when
+1	WhAdverb	why
