@@ -99,7 +99,7 @@ def bidi(text):
 
 def pieces(split, lang):
     d = "rtl" if lang == "hebrew" else "ltr"
-    inner = "".join(f"<span class='p'>{html.escape(p)}</span>" for p in split)
+    inner = " | ".join(html.escape(p) for p in split)
     return f"<span dir='{d}' class='split'>{inner}</span>"
 
 
@@ -115,7 +115,7 @@ def probe_table(report, lang, group):
 
 def item_list(items, lang):
     d = "rtl" if lang == "hebrew" else "ltr"
-    return f"<span dir='{d}'>" + " ".join(f"<span class='p'>{html.escape(s)}</span>" for s in items) + "</span>"
+    return f"<span dir='{d}'>" + ", ".join(html.escape(s) for s in items) + "</span>"
 
 
 def main():
@@ -164,7 +164,7 @@ about 2-3 minutes per language. punctuation is <i>not</i> removed: bpe sees the 
 "China." is the word <i>China.</i>. a literal § in the files (a few hundred section signs) is treated as
 whitespace, so the end-of-word item stays unambiguous.</p>
 <p>splits below are produced with the greedy longest-prefix tokenizer of the assignment
-(<code>tokenize</code> in bpe.py). pieces are shown as boxes; hebrew reads right to left.</p>
+(<code>tokenize</code> in bpe.py). pieces are separated by |; hebrew reads right to left.</p>
 """
 
 Q1 = """
@@ -226,7 +226,6 @@ h1{font-size:19pt} h2{font-size:13.5pt;margin-top:16px;border-bottom:1px solid #
 h3{font-size:11pt;margin:8px 0 3px}
 table{border-collapse:collapse;margin:4px 0;width:100%} td,th{border:1px solid #bbb;padding:3px 6px;vertical-align:top;font-size:9.5pt}
 th{background:#eee;text-align:left}
-.p{display:inline-block;border:1px solid #889;border-radius:3px;padding:0 3px;margin:1px;background:#f4f4fa;white-space:nowrap}
 .split{white-space:nowrap} code{font-size:9.5pt}
 @page{margin:16mm}
 """
