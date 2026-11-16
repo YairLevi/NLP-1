@@ -2,3 +2,8 @@
 .history
 tests/
 pdf/
+
+# Part B data (large, downloaded) and generated count files
+ass1/*.txt
+ass1/*.txt.gz
+B/**/out/
