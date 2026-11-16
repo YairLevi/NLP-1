@@ -7,3 +7,6 @@ pdf/
 ass1/*.txt
 ass1/*.txt.gz
 B/**/out/
+**/hebrew.*
+**/english.*
+B/n-grams/ngrams.html
