@@ -1,86 +1,95 @@
-# Symbols in the grammar are case-sensitive.
+################################################################################
+# grammar2 -- weighted CFG for Assignment 1, part A.2
 #
-# This grammar uses a convention that
-#    - terminals are lowercase          (president)
-#    - preterminals are capitalized     (Noun)
-#    - other nonterminals are all-caps  (NP)
+# Extends grammar1 (A.1) so that it also generates the README sentences
+# (1)-(10) and structurally similar ones, without generating sentences that
+# break a verb's subcategorization frame (e.g. "*the president sighed a pickle").
+# Selectional restrictions are NOT enforced: "the sandwich thought ..." is fine.
 #
-# This convention just makes grammars more readable to humans.  Thus:
+# File format:   <weight> <LHS> <RHS ...>   # comment
+#   Weights are relative among rules that share a LHS.
 #
-#    - When *you* are writing grammars, you should
-#      follow this convention unless you have a good reason not to.
+# Naming conventions:
+#   ALLCAPS      phrase-level nonterminal          (NP, VP)
+#   Capitalized  preterminal / part of speech      (Noun, TransVerb)
+#   lowercase    terminal word                     (sandwich)
 #
-#    - But the  *program* should still work with grammars that don't
-#      follow this convention.  So how can the program reliably tell
-#      the difference between terminal and nonterminal symbols?  If
-#      there is at least one rule for rewriting a symbol, then that
-#      symbol is a nonterminal and should be rewritten.
-#######################
+# Design notes:
+#   - Verbs are split into one class per subcategorization frame, so each VP
+#     rule states exactly which arguments a verb takes.
+#   - Single function words ("that", "is", "very", "it") appear directly in
+#     rules rather than getting a one-word class; a class is introduced only
+#     for open or growable word sets (nouns, verbs, conjunctions ...).
+#   - Tags like "(4)(10)" point to the README sentence(s) a rule exists for.
+################################################################################
 
-# Rules for creating full sentences.
+
+#------------------------------------------------------------------------------
+# Sentences
+#------------------------------------------------------------------------------
 
 1	ROOT	S .
 1	ROOT	S !
-1	ROOT	is it true that S ?     # mixing terminals and nonterminals is ok.
-
-# The basic grammar rules.  Here's what the abbreviations stand for:
-#    S  = sentence
-#    NP = noun phrase
-#    VP = verb phrase
-#    PP = prepositional phrase
-#    Det = determiner (sometimes called "article")
-#    Prep = preposition
-#    Adj = adjective
-#
-# Added in A.2:
-#    CP = complementizer phrase, a subordinate clause: Comp S ("that a sandwich sighed")
-#    VPing = progressive verb phrase: Ving NP ("eating a sandwich")
-#    Adv = adverb, modifies an adjective ("very")
-#    Comp = complementizer, introduces a CP ("that")
-#    CompVerb = verb taking a CP as its only argument ("thought")
-#    Conj = coordinating conjunction ("and")
-#    Cop = copula, the verb "to be" ("is")
-#    Pron = pronoun, stands in for an NP ("it")
-#    Proper = proper noun / name, a full NP with no determiner ("Sally")
-#    Verb = transitive verb, takes exactly one NP (also coordinated: "wanted and ate")
-#    VerbI = intransitive verb, takes no NP; may take a PP ("sighed", "worked on ...")
-#    VerbNC = verb taking an NP and then a CP ("perplexed the president that ...")
-#    Ving = present participle (-ing form), takes an NP ("eating")
+1	ROOT	is it true that S ?
 
 1	S	NP VP
-1	VP	Verb NP
-3	NP	Det Noun
-1	NP	NP PP
+
+
+#------------------------------------------------------------------------------
+# Noun phrases
+#   Det Noun is the only non-recursive NP with real content, so it gets the
+#   highest weight; this keeps the recursive rules (PP attachment and
+#   coordination) rare and the sentences short (A.1).
+#------------------------------------------------------------------------------
+
+6	NP	Det Noun		# "the president"
+1	NP	ProperNoun		# (1)      proper nouns take no determiner
+1	NP	it			# (5)      pronoun (expletive subject in (5))
+1	NP	NP PP			# (7)      "every proposal on the desk"
+0.5	NP	NP Conj NP		# (2)      "Sally and the president"
+
 1	PP	Prep NP
-3	Noun    Adj Noun
 
-# --- A.2 additions, sorted alphabetically by left-hand side ---
-1	Adj	Adv Adj	# A.2
-1	CP	Comp S	# A.2
-1	NP	NP Conj NP	# A.2
-1	NP	Pron	# A.2
-1	NP	Proper	# A.2
-1	Verb	Verb Conj Verb	# A.2
-1	VP	CompVerb CP	# A.2
-1	VP	Cop Adj	# A.2
-1	VP	Cop NP	# A.2
-1	VP	Cop VPing	# A.2
-1	VP	VerbI	# A.2
-1	VP	VerbI PP	# A.2
-1	VP	VerbNC NP CP	# A.2
-1	VPing	Ving NP	# A.2
 
-# Vocabulary.  Your program can see that "ate" is a terminal
-# symbol because there exists no rule for rewriting it.
-# Any symbol that can rewrite as a terminal (or a string of
-# terminals, like "chief of staff") is called a "preterminal."  Notice
-# that a preterminal is a special kind of nonterminal.
+#------------------------------------------------------------------------------
+# Adjectives
+#   Both rules recurse, producing chains like
+#   "the very very perplexed fine pickle".
+#------------------------------------------------------------------------------
 
-1	Verb	ate
-1	Verb	wanted
-1	Verb	kissed
-1	Verb	understood
-1	Verb	pickled
+3	Noun	Adj Noun		# adjective chains (weighted up in A.1)
+1	Adj	very Adj		# (6)      degree adverb stacks on an adjective
+
+
+#------------------------------------------------------------------------------
+# Verb phrases -- one rule per subcategorization frame
+#------------------------------------------------------------------------------
+
+# Transitive: exactly one NP object.
+2	VP	TransVerb NP		# (1)      "ate a sandwich"
+1	TransVerb	TransVerb Conj TransVerb	# (2)  "wanted and ate"
+
+# Intransitive: no object, optionally followed by a PP.
+1	VP	IntransVerb		# (3)      "sighed"
+1	VP	IntransVerb PP		# (7)      "worked on every proposal"
+
+# Sentential complement: an embedded clause introduced by the
+# complementizer "that".
+1	VP	SentCompVerb that S	# (4)(10)  "thought that S"
+
+# Psych verb (object experiencer) with an extraposed clausal subject:
+# "it" is an expletive standing in for the "that" clause.
+1	VP	PsychVerb NP that S	# (5)      "perplexed the president that S"
+
+# Copula "is": adjective, NP, or progressive participle.
+1	VP	is Adj			# (8)      "is lazy"
+1	VP	is NP			# (10)     "is a sandwich"
+1	VP	is PresParticiple NP	# (9)      progressive: "is eating a sandwich"
+
+
+#------------------------------------------------------------------------------
+# Lexicon
+#------------------------------------------------------------------------------
 
 1	Det	the
 1	Det	a
@@ -91,38 +100,35 @@
 1	Noun	pickle
 1	Noun	chief of staff
 1	Noun	floor
-1	Noun	desk	# A.2
-1	Noun	proposal	# A.2
+1	Noun	desk			# (7)
+1	Noun	proposal		# (7)
+
+1	ProperNoun	Sally		# (1)
 
 1	Adj	fine
 1	Adj	delicious
 1	Adj	perplexed
 1	Adj	pickled
-1	Adj	lazy	# A.2
+1	Adj	lazy			# (8)
 
 1	Prep	with
 1	Prep	on
 1	Prep	under
 1	Prep	in
 
-# --- A.2 additions: new word categories, sorted alphabetically ---
-1	Adv	very	# A.2
+1	Conj	and			# (2)
 
-1	Comp	that	# A.2
+1	TransVerb	ate
+1	TransVerb	wanted
+1	TransVerb	kissed
+1	TransVerb	understood
+1	TransVerb	pickled
 
-1	CompVerb	thought	# A.2
+1	IntransVerb	sighed		# (3)
+1	IntransVerb	worked		# (7)
 
-1	Conj	and	# A.2
+1	SentCompVerb	thought		# (4)
 
-1	Cop	is	# A.2
+1	PsychVerb	perplexed	# (5)
 
-1	Pron	it	# A.2
-
-1	Proper	Sally	# A.2
-
-1	VerbI	sighed	# A.2
-1	VerbI	worked	# A.2
-
-1	VerbNC	perplexed	# A.2
-
-1	Ving	eating	# A.2
+1	PresParticiple	eating		# (9)  present participle of a transitive verb
